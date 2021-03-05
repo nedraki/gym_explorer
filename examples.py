@@ -55,9 +55,18 @@ x = input('Continue with next example ?:\n')
 
 import gym
 env = gym.make('CartPole-v0')
-print(env.action_space)
+print('action_space', env.action_space)
+
+# Size of action_space ---> Number of actions the agent can take
+print('action_space', env.action_space.n)
+
 #> Discrete(2)
-print(env.observation_space)
+print('observation_space', env.observation_space)
+
+# Shape of observation_space
+print('observation_space', type(env.observation_space.shape[0]))
+
+
 #> Box(4,)
 
 print("""\nThe `Discrete` space allows a fixed range of non-negative 

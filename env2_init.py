@@ -37,7 +37,7 @@ def OurModel(input_shape, action_space):
 
 class DQNAgent:
     def __init__(self):
-        self.env = gym.make('LunarLander-v2')
+        self.env = gym.make('CartPole-v1')
         # by default, CartPole-v1 has max episode steps = 500
         self.state_size = self.env.observation_space.shape[0]
         self.action_size = self.env.action_space.n
@@ -118,7 +118,7 @@ class DQNAgent:
             done = False
             i = 0
             while not done:
-                self.env.render()  ### If you want to see the game
+                self.env.render()
                 action = self.act(state)
                 next_state, reward, done, _ = self.env.step(action)
                 next_state = np.reshape(next_state, [1, self.state_size])

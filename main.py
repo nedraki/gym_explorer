@@ -3,9 +3,16 @@ import random
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
-from deep_q_network import create_q_model
+from keras.models import load_model
+from deep_q_network_v2 import create_q_model
 from collections import deque
 import gym
+
+# Code to Measure time taken by program to execute.
+import time
+
+# store starting time
+begin = time.time()
 
 
 class Agent_Name:
@@ -16,12 +23,12 @@ class Agent_Name:
 
     def __init__(self):
 
-        print("1: LunarLander, \n2:CartPole")
+        print("1: LunarLander, \n2:CartPole-v1")
         self.user_input = input('Select a game from the list\n')
         if self.user_input == '1':
             self.agent_name = 'LunarLander-v2'
         elif self.user_input == '2':
-            self.agent_name = 'CartPole-v0'
+            self.agent_name = 'CartPole-v1'
 
 
 class Agent:
@@ -32,7 +39,7 @@ class Agent:
     def __init__(self, agent_name: str):
 
         self.env = gym.make(agent_name)
-
+        self.agent_name = agent_name
         # Hyperparameters
 
         # This could be moved to and independent file
@@ -70,6 +77,7 @@ class Agent:
         # Import and Create NN model:
 
         self.model = create_q_model(self.state_size, self.action_size)
+        print(f'Score for winning: {self.env._max_episode_steps}')
 
     def __str__(self):
         return f"Actions: {self.action_size} \nShape:{self.state_size}\nEpisodes:{self.episodes}"
@@ -90,7 +98,7 @@ class Agent:
                 self.epsilon *= self.epsilon_decay
 
     def take_action(self, state):
-        if np.random.random() < self.epsilon:
+        if np.random.random() <= self.epsilon:
             # Returns a random action for the agent
             return random.randrange(self.action_size)
         else:
@@ -103,53 +111,55 @@ class Agent:
         # Random selection of experiences from memory
 
         if len(self.memory) < self.maximun_steps:
-            return None
-        else:
-            mini_batch = random.sample(self.memory, min(
-                len(self.memory), self.batch_size))
+            return
 
-            state = np.zeros((self.batch_size, self.state_size))
+        mini_batch = random.sample(self.memory, min(
+            len(self.memory), self.batch_size))
 
-            next_state = np.zeros((self.batch_size, self.state_size))
+        state = np.zeros((self.batch_size, self.state_size))
+        next_state = np.zeros((self.batch_size, self.state_size))
 
-            action, reward, done = [], [], []
+        action, reward, done = [], [], []
 
-            # Before prediction:
-            # The operation can be improved using tensors
+        # Before prediction:
+        # The operation can be improved using tensors
 
-            for i in range(self.batch_size):
+        for i in range(self.batch_size):
 
-                state[i] = mini_batch[i][0]
-                action.append(mini_batch[i][1])
-                reward.append(mini_batch[i][2])
-                next_state[i] = mini_batch[i][3]
-                done.append(mini_batch[i][4])
+            state[i] = mini_batch[i][0]
+            action.append(mini_batch[i][1])
+            reward.append(mini_batch[i][2])
+            next_state[i] = mini_batch[i][3]
+            done.append(mini_batch[i][4])
 
-            # Batch predictions (this save computing time but...how much ?)
-            # Predictions
-            target = self.model.predict(state)
-            target_next = self.model.predict(next_state)
+        # Batch predictions (this save computing time but...how much ?)
+        # Predictions
+        target = self.model.predict(state)
+        target_next = self.model.predict(next_state)
 
-            for i in range(self.batch_size):
+        for i in range(self.batch_size):
+                # correction on the Q value for the action used
+            if done[i]:
+                target[i][action[i]] = reward[i]
+            else:
 
-                if done[i]:
-                    target[i][action[i]] = reward[i]
-                else:
+                # Application of DEEP Q Network (DQN)
+                # We can express the target in a magical one line of code
+                # in python:
 
-                    # Application of DEEP Q Network (DQN)
-                    # We can express the target in a magical one line of code
-                    # in python:
+                target[i][action[i]] = reward[i] + \
+                    self.gamma * (np.amax(target_next[i]))
 
-                    target[i][action[i]] = reward[i] + \
-                        self.gamma * (np.amax(target_next[i]))
+        # Train NN with batches
+        # verbose shows the training progress (0:silent,1:progress bar, 2:epoch)
+        self.model.fit(
+            state, target, batch_size=self.batch_size, verbose=0)
 
-            # Train NN with batches
-            # verbose shows the training progress (0:silent,1:progress bar, 2:epoch)
-            self.model.fit(
-                state, target, batch_size=self.batch_size, verbose=0)
+    def load_model(self, name):
+        self.model = load_model(name)
 
-    def save_model(self, agent_name):
-        self.model.save(self.agent_name)
+    def save_model(self, name):
+        self.model.save(name)
 
     def run(self):
 
@@ -162,18 +172,18 @@ class Agent:
             state = np.reshape(state, [1, self.state_size])
             # boolean stating whether the environment is terminated
             done = False
-            i = 0
+            score = 0
 
-            while done == False:
+            while not done:
                 # Display the gym environment ###############
-                #self.env.render()
+                # self.env.render()
                 # Decide an actions
                 action = self.take_action(state)
                 # Execute action and observe results:
                 next_state, reward, done, _ = self.env.step(action)
                 next_state = np.reshape(next_state, [1, self.state_size])
 
-                if done == False or i == self.env._max_episode_steps - 1:
+                if not done or score == self.env._max_episode_steps - 1:
                     reward = reward
                 else:
                     reward = -100
@@ -181,20 +191,61 @@ class Agent:
                 self.remember_experiences(
                     state, action, reward, next_state, done)
                 state = next_state
-                i += 1
+                score += 1
                 # Once the environment is terminated:
                 if done:
-                    print("episode: {}, score: {}".format(i_episode, i))
+                    print(
+                        f"episode: {i_episode}, score: {score}, epsilon:{self.epsilon}")
 
+                    # Aiming for maximum score but also a threshold can be defined
+					if score >= self.env._max_episode_steps:
+						print(f'Final reward: {reward}')
+						print(f'Saving trained model {self.agent_name}')
+						self.save_model(f'{self.agent_name}.h5')
 
-                    if i == self.env._max_episode_steps:
-                        print(f'Saving trained model {agent_name}')
-                        self.save_model(f'trained_{agent_name}.h5')
+                        return
 
                 self.replay()
+
+    def test(self, model_name):
+
+        self.load_model(model_name)
+
+        for i_episode in range(self.episodes):
+
+            # Init observations with each episode
+            state = self.env.reset()
+            # Check the first output of state and
+            # its original shape
+            state = np.reshape(state, [1, self.state_size])
+            # boolean stating whether the environment is terminated
+            done = False
+            score = 0
+
+            while not done:
+                    # Display the gym environment ###############
+                self.env.render()
+                # Decide an action
+                action = np.argmax(self.model.predict(state))
+                # Execute action and observe results:
+                next_state, reward, done, _ = self.env.step(action)
+                next_state = np.reshape(next_state, [1, self.state_size])
+                score += 1
+
+                if done:
+                	print(f'Final reward: {reward}')
+                    print(
+                        f"episode: {i_episode}, score: {score}, epsilon:{self.epsilon}")
+
+                    break
 
 
 if __name__ == "__main__":
     game = Agent_Name()
     agent = Agent(game.agent_name)
     agent.run()
+    # agent.test('LunarLander-v2.h5')
+
+    end = time.time()
+    # total time taken
+    print(f"Total runtime of the program is {end - begin}")

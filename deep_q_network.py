@@ -52,8 +52,8 @@ def create_q_model(input_shape: int, num_actions: int):
     # In the Deepmind paper they use RMSProp however then Adam optimizer
     # improves training time
 
-    model.compile(loss="mse", optimizer=RMSprop(
-        lr=0.00025, rho=0.95, epsilon=0.01), metrics=["accuracy"])
+    model.compile(loss="mse", optimizer=Adam(
+        learning_rate=0.001, epsilon=1e-07), metrics=["accuracy"])
 
     model.summary()
 

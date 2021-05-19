@@ -66,7 +66,7 @@ class Agent:
 	    self.epsilon_decay = 0.999
 
 	    # Determines how much memory DQN will use to learn.
-	    self.batch_size = 64
+	    self.batch_size = 32
 
 	    # Maximun steps per episode
 
@@ -195,6 +195,7 @@ class Agent:
 	                # Once the environment is terminated:
 				if done:
 					print(f"episode: {i_episode}, score: {score}, epsilon:{self.epsilon}")
+					print("reward:",reward)
 					if score >= self.env._max_episode_steps:
 						print(f'Final reward: {reward}')
 						print(f'Saving trained model {self.agent_name}')

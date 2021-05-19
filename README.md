@@ -1,7 +1,7 @@
 # Getting Started with Gym
 
 The following document is a short handbook to help you get your
-hands dirty using OpenAI Gym. Is meant to be a summary of the official documentation and source code.
+hands dirty using OpenAI Gym and Reinforcement Learning. Is meant to be a summary of the official documentation and source code.
 
 The presented code is focused on a development environment
 running Python on Ubuntu (Linux distribution).
